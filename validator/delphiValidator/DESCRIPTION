@@ -1,0 +1,19 @@
+Package: delphiValidator
+Type: Package
+Title: Validate daily COVIDcast API data uploads
+Version: 1.0
+Date: 2020-05-22
+Author: Alex Reinhart 
+Maintainer: Alex Reinhart <areinhar@stat.cmu.edu>
+Description: Validates daily COVIDcast API data uploads to ensure they are consistent and meet quality checks.
+License: file LICENSE
+Depends:
+    R (>= 3.5.0),
+Imports:
+    stats
+Suggests:
+    knitr (>= 1.15),
+    rmarkdown (>= 1.4),
+    testthat (>= 1.0.1),
+    covr (>= 2.2.2)
+RoxygenNote: 7.1.0
