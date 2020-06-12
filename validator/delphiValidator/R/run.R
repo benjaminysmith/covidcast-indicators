@@ -8,7 +8,7 @@
 #'
 #' @return none
 #' @export
-run_validator <- function(source, parameter_path = "params.json")
+run_validator <- function(source, date, parameter_path = "params.json")
 {
   # read parameters file
   params <- read_params(parameter_path)
