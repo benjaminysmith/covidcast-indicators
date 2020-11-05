@@ -6,26 +6,22 @@ when the module is run with `python -m MODULE_NAME`.
 """
 from datetime import datetime
 from itertools import product
-from functools import partial
 
 import numpy as np
+import pandas as pd
 from delphi_utils import (
-    read_params,
-    create_export_csv,
-    S3ArchiveDiffer,
+    read_params, 
+    create_export_csv, 
+    S3ArchiveDiffer, 
+    Smoother, 
+    GeoMapper
 )
 
-from delphi_utils import GeoMapper
 from .geo import geo_map
 from .pull import pull_jhu_data
-from .smooth import (
-    identity,
-    kday_moving_average,
-)
 
 
 # global constants
-seven_day_moving_average = partial(kday_moving_average, k=7)
 METRICS = [
     "deaths",
     "confirmed",
@@ -54,8 +50,8 @@ SENSOR_NAME_MAP = {
 #     "cumulative_prop":      ("cumul_prop", False),
 # }
 SMOOTHERS_MAP = {
-    "unsmoothed":           (identity, ''),
-    "seven_day_average":    (seven_day_moving_average, '7dav_'),
+    "unsmoothed":           (Smoother("identity").smooth, ''),
+    "seven_day_average":    (Smoother("moving_average", window_length=7).smooth, '7dav_'),
 }
 GEO_RESOLUTIONS = [
     "county",

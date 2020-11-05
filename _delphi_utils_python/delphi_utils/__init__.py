@@ -11,5 +11,6 @@ from .utils import read_params
 from .geomap import GeoMapper
 from .smooth import Smoother
 from .signal import add_prefix, public_signal
+from .smooth import Smoother
 
 __version__ = "0.1.0"
