@@ -109,8 +109,38 @@ class TestSmoothers:
             smoother_name="savgol", window_length=window_length, poly_fit_degree=1,
         )
         smoothed_signal2 = smoother.smooth(signal)
-
         assert np.allclose(smoothed_signal1, smoothed_signal2)
+
+        # Test the all nans case
+        signal = np.nan * np.ones(10)
+        smoother = Smoother(window_length=9)
+        smoothed_signal = smoother.smooth(signal)
+        assert np.all(np.isnan(smoothed_signal))
+
+        # Test the case where the signal is length 1
+        signal = np.ones(1)
+        smoother = Smoother()
+        smoothed_signal = smoother.smooth(signal)
+        assert np.allclose(smoothed_signal, signal)
+
+        # Test the case where the signal length is less than polynomial_fit_degree
+        signal = np.ones(2)
+        smoother = Smoother(poly_fit_degree=3)
+        smoothed_signal = smoother.smooth(signal)
+        assert np.allclose(smoothed_signal, signal)
+
+        # Test an edge fitting case
+        signal = np.array([np.nan, 1, np.nan])
+        smoother = Smoother(poly_fit_degree=1, window_length=2)
+        smoothed_signal = smoother.smooth(signal)
+        assert np.allclose(smoothed_signal, np.array([np.nan, 1, 1]), equal_nan=True)
+
+        # Test a range of cases where the signal size following a sequence of nans is returned
+        for i in range(10):
+            signal = np.hstack([[np.nan, np.nan, np.nan], np.ones(i)])
+            smoother = Smoother(poly_fit_degree=0, window_length=5)
+            smoothed_signal = smoother.smooth(signal)
+            assert np.allclose(smoothed_signal, signal, equal_nan=True)
 
     def test_impute(self):
         # test the nan imputer
@@ -171,6 +201,7 @@ class TestSmoothers:
         signal = np.arange(20)
         smoother = Smoother(smoother_name="savgol", boundary_method="identity", window_length=30)
         smoothed_signal = smoother.smooth(signal)
+        assert np.allclose(signal, smoothed_signal)
 
         # test the boundary methods
         signal = np.arange(20)
@@ -222,3 +253,11 @@ class TestSmoothers:
         assert np.allclose(
             signal[window_length - 1 :], smoothed_signal[window_length - 1 :]
         )
+
+        # Test that the index of the series gets preserved
+        signal = pd.Series(np.ones(30), index=np.arange(50, 80))
+        smoother = Smoother(smoother_name="moving_average", window_length=10)
+        smoothed_signal = signal.transform(smoother.smooth)
+        ix1 = signal.index
+        ix2 = smoothed_signal.index
+        assert ix1.equals(ix2)
