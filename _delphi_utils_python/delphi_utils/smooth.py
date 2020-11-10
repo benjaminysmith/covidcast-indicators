@@ -151,6 +151,7 @@ class Smoother:
             return signal
 
         is_pandas_series = isinstance(signal, pd.Series)
+        pandas_index = signal.index if is_pandas_series else None
         signal = signal.to_numpy() if is_pandas_series else signal
 
         # Find where the first non-nan value is located and truncate the initial nans
@@ -176,7 +177,10 @@ class Smoother:
 
         # Append the nans back, since we want to preserve length
         signal_smoothed = np.hstack([np.nan*np.ones(ix), signal_smoothed])
-        signal_smoothed = signal_smoothed if not is_pandas_series else pd.Series(signal_smoothed)
+        # Convert back to pandas if necessary
+        if is_pandas_series:
+            signal_smoothed = pd.Series(signal_smoothed)
+            signal_smoothed.index = pandas_index
         return signal_smoothed
 
     def impute(self, signal):
