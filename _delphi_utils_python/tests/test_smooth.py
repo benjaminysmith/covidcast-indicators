@@ -2,6 +2,7 @@
 Tests for the smoothing utility.
 Authors: Dmitry Shemetov, Addison Hu, Maria Jahja
 """
+from numpy.lib.polynomial import poly
 import pytest
 
 import numpy as np
@@ -109,8 +110,38 @@ class TestSmoothers:
             smoother_name="savgol", window_length=window_length, poly_fit_degree=1,
         )
         smoothed_signal2 = smoother.smooth(signal)
-
         assert np.allclose(smoothed_signal1, smoothed_signal2)
+
+        # Test the all nans case
+        signal = np.nan * np.ones(10)
+        smoother = Smoother(window_length=9)
+        smoothed_signal = smoother.smooth(signal)
+        assert np.all(np.isnan(smoothed_signal))
+
+        # Test the case where the signal is length 1
+        signal = np.ones(1)
+        smoother = Smoother()
+        smoothed_signal = smoother.smooth(signal)
+        assert np.allclose(smoothed_signal, signal)
+
+        # Test the case where the signal length is less than polynomial_fit_degree
+        signal = np.ones(2)
+        smoother = Smoother(poly_fit_degree=3)
+        smoothed_signal = smoother.smooth(signal)
+        assert np.allclose(smoothed_signal, signal)
+
+        # Test an edge fitting case
+        signal = np.array([np.nan, 1, np.nan])
+        smoother = Smoother(poly_fit_degree=1, window_length=2)
+        smoothed_signal = smoother.smooth(signal)
+        assert np.allclose(smoothed_signal, np.array([np.nan, 1, 1]), equal_nan=True)
+
+        # Test a range of cases where the signal size following a sequence of nans is returned
+        for i in range(10):
+            signal = np.hstack([[np.nan, np.nan, np.nan], np.ones(i)])
+            smoother = Smoother(poly_fit_degree=0, window_length=5)
+            smoothed_signal = smoother.smooth(signal)
+            assert np.allclose(smoothed_signal, signal, equal_nan=True)
 
     def test_impute(self):
         # test the nan imputer
@@ -166,12 +197,6 @@ class TestSmoothers:
         )
         with pytest.raises(ValueError):
             imputed_signal = smoother.savgol_impute(signal)
-
-        # test window_length > len(signal)
-        signal = np.arange(20)
-        smoother = Smoother(smoother_name="savgol", boundary_method="identity", window_length=30)
-        with pytest.raises(ValueError):
-            smoothed_signal = smoother.smooth(signal)
 
         # test the boundary methods
         signal = np.arange(20)

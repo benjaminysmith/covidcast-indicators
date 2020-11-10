@@ -122,6 +122,8 @@ class Smoother:
             raise ValueError("Invalid smoother name given.")
         if self.impute_method not in valid_impute_methods:
             raise ValueError("Invalid impute method given.")
+        if self.window_length <= 1:
+            raise ValueError("Window length is too short.")
 
         if smoother_name == "savgol":
             self.coeffs = self.savgol_coeffs(
@@ -144,26 +146,38 @@ class Smoother:
             A smoothed 1D signal. Returns an array of the same type and length as
             the input.
         """
-        if len(signal) < self.window_length:
-            raise ValueError(
-                "The window_length must be smaller than the length of the signal."
-            )
+        # If all nans, pass through
+        if np.all(np.isnan(signal)):
+            return signal
 
         is_pandas_series = isinstance(signal, pd.Series)
         signal = signal.to_numpy() if is_pandas_series else signal
 
-        signal = self.impute(signal)
+        # Find where the first non-nan value is located and truncate the initial nans
+        ix = np.where(~np.isnan(signal))[0][0]
+        signal = signal[ix:]
 
-        if self.smoother_name == "savgol":
-            signal_smoothed = self.savgol_smoother(signal)
-        elif self.smoother_name == "left_gauss_linear":
-            signal_smoothed = self.left_gauss_linear_smoother(signal)
-        elif self.smoother_name == "moving_average":
-            signal_smoothed = self.moving_average_smoother(signal)
-        elif self.smoother_name == "identity":
-            signal_smoothed = signal
+        # Don't smooth in certain edge cases
+        if len(signal) < self.poly_fit_degree or len(signal) == 1:
+            signal_smoothed = signal.copy()
+        else:
+            # Impute
+            signal = self.impute(signal)
 
-        return signal_smoothed if not is_pandas_series else pd.Series(signal_smoothed)
+            # Smooth
+            if self.smoother_name == "savgol":
+                signal_smoothed = self.savgol_smoother(signal)
+            elif self.smoother_name == "left_gauss_linear":
+                signal_smoothed = self.left_gauss_linear_smoother(signal)
+            elif self.smoother_name == "moving_average":
+                signal_smoothed = self.moving_average_smoother(signal)
+            elif self.smoother_name == "identity":
+                signal_smoothed = signal
+
+        # Append the nans back, since we want to preserve length
+        signal_smoothed = np.hstack([np.nan*np.ones(ix), signal_smoothed])
+        signal_smoothed = signal_smoothed if not is_pandas_series else pd.Series(signal_smoothed)
+        return signal_smoothed
 
     def impute(self, signal):
         """
@@ -371,7 +385,7 @@ class Smoother:
         # - identity keeps the original signal (doesn't smooth)
         # - nan writes nans
         if self.boundary_method == "shortened_window":
-            for ix in range(len(self.coeffs)):
+            for ix in range(min(len(self.coeffs), len(signal))):
                 if ix == 0:
                     signal_smoothed[ix] = signal[ix]
                 else:
@@ -383,7 +397,7 @@ class Smoother:
                         signal_smoothed[ix] = signal[ix]
             return signal_smoothed
         elif self.boundary_method == "identity":
-            for ix in range(len(self.coeffs)):
+            for ix in range(min(len(self.coeffs), len(signal))):
                 signal_smoothed[ix] = signal[ix]
             return signal_smoothed
         elif self.boundary_method == "nan":
